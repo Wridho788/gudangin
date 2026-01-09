@@ -1,183 +1,325 @@
+<template>
+  <AdminLayout>
+    <LoadingSkeleton v-if="isLoading" :count="5" height="80px" />
+
+    <div v-else-if="order">
+      <PageHeader :title="`Order ${order.order_number}`" subtitle="Order details and actions">
+        <template #actions>
+          <RouterLink to="/orders" class="btn-secondary">
+            <ArrowLeft class="w-4 h-4" />
+            Back
+          </RouterLink>
+        </template>
+      </PageHeader>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Info -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Order Info -->
+          <Card title="Order Information">
+            <div class="space-y-4">
+              <div>
+                <span class="text-sm text-slate-600">Status</span>
+                <div class="mt-1">
+                  <StatusBadge :status="order.status">
+                    {{ order.status.toUpperCase() }}
+                  </StatusBadge>
+                </div>
+              </div>
+              <div>
+                <span class="text-sm text-slate-600">Created By</span>
+                <p class="font-medium text-slate-900">{{ order.created_by_name }}</p>
+              </div>
+              <div>
+                <span class="text-sm text-slate-600">Created At</span>
+                <p class="font-medium text-slate-900">{{ formatDate(order.created_at) }}</p>
+              </div>
+              <div v-if="order.approved_by">
+                <span class="text-sm text-slate-600">Approved At</span>
+                <p class="font-medium text-slate-900">{{ formatDate(order.approved_at!) }}</p>
+              </div>
+              <div v-if="order.completed_at">
+                <span class="text-sm text-slate-600">Completed At</span>
+                <p class="font-medium text-slate-900">{{ formatDate(order.completed_at) }}</p>
+              </div>
+              <div v-if="order.notes">
+                <span class="text-sm text-slate-600">Notes</span>
+                <p class="text-slate-900">{{ order.notes }}</p>
+              </div>
+            </div>
+          </Card>
+
+          <!-- Items -->
+          <Card title="Order Items">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in order.items" :key="item.id">
+                    <td>
+                      <span class="font-medium text-slate-900">{{ item.product_name }}</span>
+                    </td>
+                    <td>
+                      <span class="font-medium text-slate-900">{{ item.qty }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <!-- Activity Log -->
+          <Card title="Activity Timeline">
+            <LoadingSkeleton v-if="activityLoading" :count="3" />
+            <EmptyState
+              v-else-if="!activityData || activityData.length === 0"
+              :icon="Activity"
+              title="No activity yet"
+            />
+            <div v-else class="space-y-4">
+              <div
+                v-for="log in activityData"
+                :key="log.id"
+                class="flex items-start gap-3"
+              >
+                <div class="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Activity class="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p class="text-sm text-slate-900">
+                    <span class="font-medium">{{ log.actor_role }}</span> 
+                    {{ log.action }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1">{{ formatDate(log.created_at) }}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <!-- Actions Panel -->
+        <div class="lg:col-span-1">
+          <Card title="Actions">
+            <div class="space-y-3">
+              <!-- Submit -->
+              <button
+                v-if="order.status === 'draft'"
+                @click="handleSubmit"
+                class="btn-primary w-full"
+                :disabled="submitMutation.isPending.value"
+              >
+                <Send class="w-4 h-4" />
+                {{ submitMutation.isPending.value ? 'Submitting...' : 'Submit for Approval' }}
+              </button>
+
+              <!-- Approve -->
+              <button
+                v-if="order.status === 'submitted' && authStore.canApprove"
+                @click="handleApprove"
+                class="btn-primary w-full"
+                :disabled="approveMutation.isPending.value"
+              >
+                <CheckCircle class="w-4 h-4" />
+                {{ approveMutation.isPending.value ? 'Approving...' : 'Approve Order' }}
+              </button>
+
+              <!-- Reject -->
+              <button
+                v-if="order.status === 'submitted' && authStore.canApprove"
+                @click="showRejectModal = true"
+                class="btn-danger w-full"
+              >
+                <XCircle class="w-4 h-4" />
+                Reject Order
+              </button>
+
+              <!-- Complete -->
+              <button
+                v-if="order.status === 'approved' && authStore.canComplete"
+                @click="handleComplete"
+                class="btn-primary w-full"
+                :disabled="completeMutation.isPending.value"
+              >
+                <CheckCircle class="w-4 h-4" />
+                {{ completeMutation.isPending.value ? 'Completing...' : 'Complete Order' }}
+              </button>
+
+              <!-- Cancel -->
+              <button
+                v-if="['draft', 'submitted'].includes(order.status)"
+                @click="showCancelModal = true"
+                class="btn-secondary w-full"
+              >
+                <X class="w-4 h-4" />
+                Cancel Order
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <Modal
+      :show="showRejectModal"
+      title="Reject Order"
+      @close="showRejectModal = false"
+    >
+      <div class="form-group">
+        <label class="form-label">Reason for rejection</label>
+        <textarea
+          v-model="rejectReason"
+          class="form-input"
+          rows="4"
+          placeholder="Explain why this order is being rejected..."
+          required
+        ></textarea>
+      </div>
+
+      <template #footer>
+        <button @click="showRejectModal = false" class="btn-secondary">
+          Cancel
+        </button>
+        <button @click="handleReject" class="btn-danger" :disabled="rejectMutation.isPending.value">
+          {{ rejectMutation.isPending.value ? 'Rejecting...' : 'Reject Order' }}
+        </button>
+      </template>
+    </Modal>
+
+    <!-- Cancel Modal -->
+    <Modal
+      :show="showCancelModal"
+      title="Cancel Order"
+      @close="showCancelModal = false"
+    >
+      <div class="form-group">
+        <label class="form-label">Reason for cancellation</label>
+        <textarea
+          v-model="cancelReason"
+          class="form-input"
+          rows="4"
+          placeholder="Explain why this order is being cancelled..."
+          required
+        ></textarea>
+      </div>
+
+      <template #footer>
+        <button @click="showCancelModal = false" class="btn-secondary">
+          Cancel
+        </button>
+        <button @click="handleCancel" class="btn-danger" :disabled="cancelMutation.isPending.value">
+          {{ cancelMutation.isPending.value ? 'Cancelling...' : 'Cancel Order' }}
+        </button>
+      </template>
+    </Modal>
+  </AdminLayout>
+</template>
+
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { orders } from '@/mocks/orders'
-import type { Order } from '@/mocks/orders'
-import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
-import OrderTimeline from '@/components/OrderTimeline.vue'
-import OrderActionBar from '@/components/OrderActionBar.vue'
+import {
+  ArrowLeft,
+  Send,
+  CheckCircle,
+  XCircle,
+  X,
+  Activity,
+} from 'lucide-vue-next'
+import AdminLayout from '../layouts/AdminLayout.vue'
+import PageHeader from '../components/ui/PageHeader.vue'
+import Card from '../components/ui/Card.vue'
+import StatusBadge from '../components/ui/StatusBadge.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
+import Modal from '../components/ui/Modal.vue'
+import {
+  useOrder,
+  useSubmitOrder,
+  useApproveOrder,
+  useRejectOrder,
+  useCompleteOrder,
+  useCancelOrder,
+} from '../composables/useOrders'
+import { useActivityLogs } from '../composables/useActivity'
+import { useAuthStore } from '../stores/auth.store'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+
 const orderId = route.params.id as string
-const userRole = ref<'OWNER' | 'STAFF'>('OWNER') // Mock role
+const { data: order, isLoading } = useOrder(orderId)
+const { data: activityData, isLoading: activityLoading } = useActivityLogs('order', orderId)
 
-const order = ref<Order | undefined>(orders.find((o) => o.id === orderId))
+const submitMutation = useSubmitOrder()
+const approveMutation = useApproveOrder()
+const rejectMutation = useRejectOrder()
+const completeMutation = useCompleteOrder()
+const cancelMutation = useCancelOrder()
 
-const formatDate = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('id-ID', {
-    day: '2-digit',
-    month: 'long',
+const showRejectModal = ref(false)
+const showCancelModal = ref(false)
+const rejectReason = ref('')
+const cancelReason = ref('')
+
+async function handleSubmit() {
+  try {
+    await submitMutation.mutateAsync(orderId)
+  } catch (error) {
+    console.error('Submit error:', error)
+  }
+}
+
+async function handleApprove() {
+  try {
+    await approveMutation.mutateAsync(orderId)
+  } catch (error) {
+    console.error('Approve error:', error)
+  }
+}
+
+async function handleReject() {
+  try {
+    await rejectMutation.mutateAsync({ orderId, reason: rejectReason.value })
+    showRejectModal.value = false
+    rejectReason.value = ''
+  } catch (error) {
+    console.error('Reject error:', error)
+  }
+}
+
+async function handleComplete() {
+  try {
+    await completeMutation.mutateAsync(orderId)
+  } catch (error) {
+    console.error('Complete error:', error)
+  }
+}
+
+async function handleCancel() {
+  try {
+    await cancelMutation.mutateAsync({ orderId, reason: cancelReason.value })
+    showCancelModal.value = false
+    cancelReason.value = ''
+    router.push('/orders')
+  } catch (error) {
+    console.error('Cancel error:', error)
+  }
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   })
 }
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount)
-}
-
-const totalAmount = computed(() => {
-  if (!order.value) return 0
-  return order.value.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-})
-
-const handleSave = () => {
-  alert('Save Draft (dummy action)')
-}
-
-const handleSubmit = () => {
-  alert('Submit for Approval (dummy action)')
-  if (order.value) {
-    order.value.status = 'SUBMITTED'
-  }
-}
-
-const handleApprove = () => {
-  alert('Order Approved (dummy action)')
-  if (order.value) {
-    order.value.status = 'APPROVED'
-  }
-}
-
-const handleComplete = () => {
-  alert('Order Completed (dummy action)')
-  if (order.value) {
-    order.value.status = 'COMPLETED'
-  }
-}
-
-const handleCancel = () => {
-  if (confirm('Are you sure you want to cancel this order?')) {
-    alert('Order Cancelled (dummy action)')
-    if (order.value) {
-      order.value.status = 'CANCELLED'
-    }
-  }
-}
-
-const goBack = () => {
-  router.push('/orders')
-}
 </script>
-
-<template>
-  <div class="min-h-screen bg-bg p-6">
-    <div class="max-w-5xl mx-auto">
-      <!-- Back Button -->
-      <button
-        @click="goBack"
-        class="mb-6 text-text-soft hover:text-text transition-colors flex items-center gap-2"
-      >
-        <span>←</span>
-        <span>Back to Orders</span>
-      </button>
-
-      <div v-if="!order" class="bg-surface border border-border rounded-lg p-8 text-center">
-        <p class="text-text-soft">Order not found</p>
-      </div>
-
-      <div v-else class="space-y-6">
-        <!-- Header -->
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-start justify-between mb-4">
-            <div>
-              <h1 class="text-3xl font-bold text-text mb-2">{{ order.id }}</h1>
-              <p class="text-text-soft">Created by {{ order.createdBy }} ({{ order.createdByRole }})</p>
-              <p class="text-text-soft text-sm">{{ formatDate(order.createdAt) }}</p>
-            </div>
-            <OrderStatusBadge :status="order.status" />
-          </div>
-
-          <!-- Action Bar -->
-          <div class="pt-4 border-t border-border">
-            <OrderActionBar
-              :status="order.status"
-              :role="userRole"
-              @save="handleSave"
-              @submit="handleSubmit"
-              @approve="handleApprove"
-              @complete="handleComplete"
-              @cancel="handleCancel"
-            />
-          </div>
-        </div>
-
-        <!-- Order Items -->
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-text mb-4">Order Items</h2>
-          <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-bg border-b border-border">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-text-soft uppercase">
-                    Product
-                  </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-text-soft uppercase">
-                    SKU
-                  </th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-text-soft uppercase">
-                    Qty
-                  </th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-text-soft uppercase">
-                    Price
-                  </th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-text-soft uppercase">
-                    Subtotal
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border">
-                <tr v-for="item in order.items" :key="item.id">
-                  <td class="px-4 py-3 text-sm text-text">{{ item.productName }}</td>
-                  <td class="px-4 py-3 text-sm text-text-soft">{{ item.sku }}</td>
-                  <td class="px-4 py-3 text-sm text-text text-right">{{ item.quantity }}</td>
-                  <td class="px-4 py-3 text-sm text-text text-right">{{ formatCurrency(item.price) }}</td>
-                  <td class="px-4 py-3 text-sm text-text font-medium text-right">
-                    {{ formatCurrency(item.price * item.quantity) }}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot class="bg-bg border-t-2 border-border">
-                <tr>
-                  <td colspan="4" class="px-4 py-3 text-right text-sm font-semibold text-text">
-                    Total:
-                  </td>
-                  <td class="px-4 py-3 text-right text-lg font-bold text-primary">
-                    {{ formatCurrency(totalAmount) }}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- Notes -->
-        <div v-if="order.notes" class="bg-surface border border-border rounded-lg p-6">
-          <h3 class="text-lg font-semibold text-text mb-2">Notes</h3>
-          <p class="text-text-soft">{{ order.notes }}</p>
-        </div>
-
-        <!-- Timeline -->
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <OrderTimeline :history="order.statusHistory" />
-        </div>
-      </div>
-    </div>
-  </div>
-</template>

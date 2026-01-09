@@ -1,133 +1,243 @@
+<template>
+  <AdminLayout>
+    <PageHeader
+      title="Dashboard"
+      subtitle="Overview of your warehouse operations"
+    />
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <Card>
+        <template #default>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-600">Total Orders Today</p>
+              <p class="text-3xl font-bold text-slate-900 mt-2">
+                {{ ordersData?.length || 0 }}
+              </p>
+            </div>
+            <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+              <ShoppingCart class="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <Card v-if="authStore.canApprove">
+        <template #default>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-600">Pending Approval</p>
+              <p class="text-3xl font-bold text-amber-600 mt-2">
+                {{ pendingApproval }}
+              </p>
+            </div>
+            <div class="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Clock class="w-6 h-6 text-amber-600" />
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <Card>
+        <template #default>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-600">Low Stock Items</p>
+              <p class="text-3xl font-bold text-red-600 mt-2">
+                {{ lowStockData?.length || 0 }}
+              </p>
+            </div>
+            <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+              <AlertTriangle class="w-6 h-6 text-red-600" />
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <Card>
+        <template #default>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-600">Completed Today</p>
+              <p class="text-3xl font-bold text-emerald-600 mt-2">
+                {{ completedToday }}
+              </p>
+            </div>
+            <div class="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <CheckCircle class="w-6 h-6 text-emerald-600" />
+            </div>
+          </div>
+        </template>
+      </Card>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Recent Orders -->
+      <Card title="Recent Orders">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">Recent Orders</h3>
+            <RouterLink to="/orders" class="text-sm font-medium text-blue-600 hover:text-blue-700">
+              View All
+            </RouterLink>
+          </div>
+        </template>
+
+        <LoadingSkeleton v-if="ordersLoading" :count="5" />
+        <EmptyState
+          v-else-if="!recentOrders.length"
+          :icon="ShoppingCart"
+          title="No orders yet"
+          description="Create your first order to get started"
+        >
+          <template #action>
+            <RouterLink to="/orders/new" class="btn-primary">
+              <Plus class="w-4 h-4" />
+              Create Order
+            </RouterLink>
+          </template>
+        </EmptyState>
+        <div v-else class="space-y-3">
+          <div
+            v-for="order in recentOrders"
+            :key="order.id"
+            @click="router.push(`/orders/${order.id}`)"
+            class="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <div>
+                <p class="font-medium text-slate-900">{{ order.order_number }}</p>
+                <p class="text-sm text-slate-600">by {{ order.created_by_name }}</p>
+              </div>
+              <StatusBadge :status="order.status">{{ order.status.toUpperCase() }}</StatusBadge>
+            </div>
+            <p class="text-xs text-slate-500">{{ formatDate(order.created_at) }}</p>
+          </div>
+        </div>
+      </Card>
+
+      <!-- Low Stock Alert -->
+      <Card title="Low Stock Alert">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">Low Stock Alert</h3>
+            <RouterLink to="/inventory" class="text-sm font-medium text-blue-600 hover:text-blue-700">
+              View Inventory
+            </RouterLink>
+          </div>
+        </template>
+
+        <LoadingSkeleton v-if="lowStockLoading" :count="5" />
+        <EmptyState
+          v-else-if="!lowStockData || lowStockData.length === 0"
+          :icon="CheckCircle"
+          title="All stock levels healthy"
+          description="No products are currently low on stock"
+        />
+        <div v-else class="space-y-3">
+          <div
+            v-for="product in lowStockData"
+            :key="product.id"
+            class="p-4 border border-red-200 bg-red-50 rounded-lg"
+          >
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="font-medium text-slate-900">{{ product.name }}</p>
+                <p class="text-sm text-slate-600">SKU: {{ product.sku }}</p>
+              </div>
+              <span class="badge badge-rejected">
+                {{ product.stock }} / {{ product.min_stock }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+
+    <!-- Recent Activity -->
+    <Card title="Recent Activity" class="mt-6">
+      <LoadingSkeleton v-if="activityLoading" :count="5" />
+      <EmptyState
+        v-else-if="!activityData || activityData.length === 0"
+        :icon="Activity"
+        title="No recent activity"
+        description="Activity logs will appear here"
+      />
+      <div v-else class="space-y-3">
+        <div
+          v-for="log in activityData"
+          :key="log.id"
+          class="flex items-start gap-3 p-3 border border-slate-200 rounded-lg"
+        >
+          <div class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Activity class="w-4 h-4 text-slate-600" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-slate-900">
+              <span class="font-medium">{{ log.actor_role }}</span> 
+              {{ log.action }} 
+              <span class="font-medium">{{ log.entity_type }}</span>
+            </p>
+            <p class="text-xs text-slate-500 mt-1">{{ formatDate(log.created_at) }}</p>
+          </div>
+        </div>
+      </div>
+    </Card>
+  </AdminLayout>
+</template>
+
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { dashboardSummary, recentOrders, activityLogs } from '@/mocks/dashboard'
-import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
+import {
+  ShoppingCart,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  Activity,
+  Plus,
+} from 'lucide-vue-next'
+import AdminLayout from '../layouts/AdminLayout.vue'
+import PageHeader from '../components/ui/PageHeader.vue'
+import Card from '../components/ui/Card.vue'
+import StatusBadge from '../components/ui/StatusBadge.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
+import { useOrders } from '../composables/useOrders'
+import { useLowStockProducts } from '../composables/useInventory'
+import { useActivityLogs } from '../composables/useActivity'
+import { useAuthStore } from '../stores/auth.store'
 
 const router = useRouter()
-const summary = ref(dashboardSummary)
-const orders = ref(recentOrders)
-const logs = ref(activityLogs)
-const userRole = ref<'OWNER' | 'STAFF'>('OWNER') // Mock role
+const authStore = useAuthStore()
 
-const formatDate = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('id-ID', {
-    day: '2-digit',
+const { data: ordersData, isLoading: ordersLoading } = useOrders()
+const { data: lowStockData, isLoading: lowStockLoading } = useLowStockProducts()
+const { data: activityData, isLoading: activityLoading } = useActivityLogs()
+
+const recentOrders = computed(() => ordersData.value?.slice(0, 5) || [])
+
+const pendingApproval = computed(() => {
+  return ordersData.value?.filter((o) => o.status === 'submitted').length || 0
+})
+
+const completedToday = computed(() => {
+  const today = new Date().toDateString()
+  return (
+    ordersData.value?.filter((o) => {
+      return o.status === 'completed' && new Date(o.completed_at || '').toDateString() === today
+    }).length || 0
+  )
+})
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleString('en-US', {
     month: 'short',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   })
 }
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount)
-}
-
-const goToOrder = (orderId: string) => {
-  router.push(`/orders/${orderId}`)
-}
 </script>
-
-<template>
-  <div class="min-h-screen bg-bg p-6">
-    <div class="max-w-7xl mx-auto">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-text mb-2">Dashboard</h1>
-        <p class="text-text-soft">Snapshot operasional Gudangin ERP</p>
-      </div>
-
-      <!-- Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-text-soft text-sm">Total Orders Today</p>
-          </div>
-          <p class="text-3xl font-bold text-text">{{ summary.totalOrdersToday }}</p>
-        </div>
-
-        <div v-if="userRole === 'OWNER'" class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-text-soft text-sm">Pending Approval</p>
-          </div>
-          <p class="text-3xl font-bold text-warning">{{ summary.pendingApproval }}</p>
-        </div>
-
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-text-soft text-sm">Low Stock</p>
-          </div>
-          <p class="text-3xl font-bold text-danger">{{ summary.lowStockCount }}</p>
-        </div>
-
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-text-soft text-sm">Completed Today</p>
-          </div>
-          <p class="text-3xl font-bold text-success">{{ summary.completedToday }}</p>
-        </div>
-      </div>
-
-      <!-- Two Column Layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Recent Orders -->
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-text">Recent Orders</h2>
-            <router-link
-              to="/orders"
-              class="text-primary hover:text-primary-hover text-sm font-medium"
-            >
-              View All
-            </router-link>
-          </div>
-          <div class="space-y-3">
-            <div
-              v-for="order in orders"
-              :key="order.id"
-              @click="goToOrder(order.id)"
-              class="bg-bg border border-border rounded-md p-4 cursor-pointer hover:border-primary transition-colors"
-            >
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <p class="font-medium text-text">{{ order.id }}</p>
-                  <p class="text-sm text-text-soft">by {{ order.createdBy }}</p>
-                </div>
-                <OrderStatusBadge :status="order.status" />
-              </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-text-soft">{{ order.totalItems }} items</span>
-                <span class="text-text font-medium">{{ formatCurrency(order.totalAmount) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="bg-surface border border-border rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-text mb-4">Recent Activity</h2>
-          <div class="space-y-3">
-            <div
-              v-for="log in logs.slice(0, 5)"
-              :key="log.id"
-              class="bg-bg border border-border rounded-md p-4"
-            >
-              <div class="flex items-start justify-between mb-1">
-                <p class="text-sm font-medium text-text">{{ log.action.replace(/_/g, ' ') }}</p>
-                <span class="text-xs text-text-soft">{{ formatDate(log.timestamp) }}</span>
-              </div>
-              <p class="text-sm text-text-soft mb-1">
-                {{ log.actor }} ({{ log.role }}) → {{ log.entityId }}
-              </p>
-              <p v-if="log.notes" class="text-xs text-text-soft italic">{{ log.notes }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>

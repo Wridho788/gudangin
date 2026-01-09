@@ -1,0 +1,80 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { InventoryAPI } from '../services/inventory.service'
+
+export function useProducts() {
+  return useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data } = await InventoryAPI.list()
+      return data
+    },
+  })
+}
+
+export function useProduct(productId: string) {
+  return useQuery({
+    queryKey: ['product', productId],
+    queryFn: async () => {
+      const { data } = await InventoryAPI.getById(productId)
+      return data[0]
+    },
+    enabled: !!productId,
+  })
+}
+
+export function useLowStockProducts() {
+  return useQuery({
+    queryKey: ['products', 'low-stock'],
+    queryFn: async () => {
+      const { data } = await InventoryAPI.lowStock()
+      return data
+    },
+  })
+}
+
+export function useStockMutations(productId?: string) {
+  return useQuery({
+    queryKey: productId
+      ? ['stock-mutations', productId]
+      : ['stock-mutations'],
+    queryFn: async () => {
+      if (productId) {
+        const { data } = await InventoryAPI.getMutations(productId)
+        return data
+      } else {
+        const { data } = await InventoryAPI.getAllMutations()
+        return data
+      }
+    },
+  })
+}
+
+export function useAdjustStock() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: InventoryAPI.adjust,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({
+        queryKey: ['product', variables.product_id],
+      })
+      queryClient.invalidateQueries({ queryKey: ['stock-mutations'] })
+    },
+  })
+}
+
+export function useStockOpname() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: InventoryAPI.opname,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({
+        queryKey: ['product', variables.product_id],
+      })
+      queryClient.invalidateQueries({ queryKey: ['stock-mutations'] })
+    },
+  })
+}

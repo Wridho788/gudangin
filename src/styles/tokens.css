@@ -1,21 +1,81 @@
 :root {
-  /* Base UI */
-  --bg: 15 23 42;          /* slate-950 */
-  --surface: 17 24 39;     /* slate-900 */
-  --border: 30 41 59;      /* slate-800 */
+  /* Background Colors - ERP Admin Grade */
+  --bg-base: 248 250 252;       /* slate-50 - main background */
+  --bg-surface: 255 255 255;    /* white - cards, panels */
+  --bg-muted: 241 245 249;      /* slate-100 - subtle backgrounds */
+  --bg-hover: 248 250 252;      /* slate-50 - hover states */
 
-  /* Text */
-  --text: 241 245 249;     /* slate-100 */
-  --text-soft: 148 163 184;/* slate-400 */
+  /* Text Colors */
+  --text-primary: 15 23 42;     /* slate-900 - main text */
+  --text-secondary: 71 85 105;  /* slate-600 - secondary text */
+  --text-muted: 148 163 184;    /* slate-400 - meta info */
+  --text-disabled: 203 213 225; /* slate-300 - disabled */
 
-  /* Primary / Accent */
-  --primary: 79 70 229;        /* indigo-600 */
-  --primary-hover: 99 102 241; /* indigo-500 */
-  --primary-soft: 129 140 248; /* indigo-400 */
+  /* Border & Divider */
+  --border: 226 232 240;        /* slate-200 - borders */
+  --border-strong: 203 213 225; /* slate-300 - emphasized borders */
 
-  /* Semantic */
-  --success: 5 150 105;    /* emerald-600 */
-  --warning: 245 158 11;   /* amber-500 */
-  --danger: 225 29 72;     /* rose-600 */
-  --info: 14 165 233;      /* sky-500 */
+  /* Primary Color - Used sparingly */
+  --primary: 37 99 235;         /* blue-600 - primary actions */
+  --primary-hover: 29 78 216;   /* blue-700 */
+  --primary-soft: 219 234 254;  /* blue-100 - subtle backgrounds */
+
+  /* Status Colors - Semantic */
+  --success: 22 163 74;         /* green-600 */
+  --success-bg: 220 252 231;    /* green-100 */
+  --warning: 245 158 11;        /* amber-500 */
+  --warning-bg: 254 243 199;    /* amber-100 */
+  --danger: 220 38 38;          /* red-600 */
+  --danger-bg: 254 226 226;     /* red-100 */
+  --info: 37 99 235;            /* blue-600 */
+  --info-bg: 219 234 254;       /* blue-100 */
+  
+  /* Status Badge Colors */
+  --status-draft: 107 114 128;      /* gray-500 */
+  --status-draft-bg: 243 244 246;   /* gray-100 */
+  --status-submitted: 37 99 235;    /* blue-600 */
+  --status-submitted-bg: 219 234 254; /* blue-100 */
+  --status-approved: 22 163 74;     /* green-600 */
+  --status-approved-bg: 220 252 231; /* green-100 */
+  --status-rejected: 220 38 38;     /* red-600 */
+  --status-rejected-bg: 254 226 226; /* red-100 */
+  --status-completed: 5 150 105;    /* emerald-600 */
+  --status-completed-bg: 209 250 229; /* emerald-100 */
+
+  /* Spacing Scale */
+  --space-xs: 0.25rem;   /* 4px */
+  --space-sm: 0.5rem;    /* 8px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;  /* 4px */
+  --radius-md: 0.375rem; /* 6px */
+  --radius-lg: 0.5rem;   /* 8px */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+
+  /* Density Variables */
+  --density-row-height: 3rem;      /* 48px - comfortable */
+  --density-padding-y: 0.75rem;    /* 12px */
+  --density-padding-x: 1rem;       /* 16px */
+  --density-font-size: 0.875rem;   /* 14px */
 }
+
+/* Compact Density Mode */
+[data-density="compact"] {
+  --density-row-height: 2.5rem;    /* 40px - compact */
+  --density-padding-y: 0.5rem;     /* 8px */
+  --density-padding-x: 0.75rem;    /* 12px */
+  --density-font-size: 0.8125rem;  /* 13px */
+}
+
