@@ -3,23 +3,23 @@ import type { Product, StockMutation } from '../types'
 
 export const InventoryAPI = {
   /**
-   * List all products from v_products view
+   * List all products
    */
-  list: () => api.get<Product[]>('/v_products'),
+  list: () => api.get<Product[]>('/products'),
 
   /**
    * Get low stock products
    */
   lowStock: () =>
-    api.get<Product[]>('/v_products', {
-      params: { is_low_stock: 'eq.true' },
+    api.get<Product[]>('/products', {
+      params: { 'stock': 'lt.min_stock' },
     }),
 
   /**
    * Get product by ID
    */
   getById: (id: string) =>
-    api.get<Product[]>('/v_products', {
+    api.get<Product[]>('/products', {
       params: { id: `eq.${id}` },
     }),
 

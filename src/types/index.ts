@@ -71,10 +71,9 @@ export interface ActivityLog {
 export type UserRole = 'owner' | 'admin' | 'staff'
 
 export interface UserProfile {
-  user_id: string
+  id: string
   role: UserRole
   full_name: string
-  email?: string
   created_at: string
 }
 

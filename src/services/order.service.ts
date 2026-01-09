@@ -3,10 +3,10 @@ import type { Order } from '../types'
 
 export const OrderAPI = {
   /**
-   * List all orders from v_orders view
+   * List all orders
    */
   list: () =>
-    api.get<Order[]>('/v_orders', {
+    api.get<Order[]>('/orders', {
       params: { order: 'created_at.desc' },
     }),
 
@@ -14,7 +14,7 @@ export const OrderAPI = {
    * Get single order detail
    */
   getById: (id: string) =>
-    api.get<Order[]>('/v_orders', {
+    api.get<Order[]>('/orders', {
       params: { id: `eq.${id}` },
     }),
 
