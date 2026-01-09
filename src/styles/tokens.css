@@ -1,0 +1,21 @@
+:root {
+  /* Base UI */
+  --bg: 15 23 42;          /* slate-950 */
+  --surface: 17 24 39;     /* slate-900 */
+  --border: 30 41 59;      /* slate-800 */
+
+  /* Text */
+  --text: 241 245 249;     /* slate-100 */
+  --text-soft: 148 163 184;/* slate-400 */
+
+  /* Primary / Accent */
+  --primary: 79 70 229;        /* indigo-600 */
+  --primary-hover: 99 102 241; /* indigo-500 */
+  --primary-soft: 129 140 248; /* indigo-400 */
+
+  /* Semantic */
+  --success: 5 150 105;    /* emerald-600 */
+  --warning: 245 158 11;   /* amber-500 */
+  --danger: 225 29 72;     /* rose-600 */
+  --info: 14 165 233;      /* sky-500 */
+}
