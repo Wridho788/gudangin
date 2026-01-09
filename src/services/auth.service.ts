@@ -44,7 +44,7 @@ export const AuthAPI = {
    */
   getProfile: async (userId: string): Promise<UserProfile> => {
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
       .eq('user_id', userId)
       .single()
