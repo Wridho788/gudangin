@@ -21,6 +21,36 @@ export const InventoryAPI = {
     }),
 
   /**
+   * Create new product
+   */
+  create: (payload: {
+    name: string
+    sku: string
+    stock: number
+    min_stock: number
+  }) =>
+    api.post<Product>('/products', payload, {
+      headers: { Prefer: 'return=representation' },
+    }),
+
+  /**
+   * Update product
+   */
+  update: (id: string, payload: {
+    name?: string
+    sku?: string
+    min_stock?: number
+  }) =>
+    api.patch<Product>(`/products?id=eq.${id}`, payload, {
+      headers: { Prefer: 'return=representation' },
+    }),
+
+  /**
+   * Delete product
+   */
+  delete: (id: string) => api.delete(`/products?id=eq.${id}`),
+
+  /**
    * Adjust stock (manual correction)
    */
   adjust: (payload: {
