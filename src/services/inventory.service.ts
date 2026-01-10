@@ -10,10 +10,7 @@ export const InventoryAPI = {
   /**
    * Get low stock products
    */
-  lowStock: () =>
-    api.get<Product[]>('/products', {
-      params: { 'stock': 'lt.min_stock' },
-    }),
+  lowStock: () => api.get<Product[]>('/products'),
 
   /**
    * Get product by ID

@@ -27,7 +27,8 @@ export function useLowStockProducts() {
     queryKey: ['products', 'low-stock'],
     queryFn: async () => {
       const { data } = await InventoryAPI.lowStock()
-      return data
+      // Filter client-side: products where stock < min_stock
+      return data.filter((product) => product.stock < product.min_stock)
     },
   })
 }

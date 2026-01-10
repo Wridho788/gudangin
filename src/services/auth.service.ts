@@ -42,12 +42,12 @@ export const AuthAPI = {
   /**
    * Get user profile with role
    */
-  getProfile: async (userId: string): Promise<UserProfile> => {
+  getProfile: async (userId: string): Promise<UserProfile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
     if (error) throw error
     return data
